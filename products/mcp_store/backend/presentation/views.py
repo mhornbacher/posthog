@@ -1059,7 +1059,14 @@ class MCPServerInstallationViewSet(TeamAndOrgViewSetMixin, viewsets.ModelViewSet
         if not _is_https(auth_endpoint):
             raise OAuthAuthorizeURLError("Authorization endpoint must use HTTPS")
 
-        return f"{auth_endpoint}?{urlencode(query_params)}"
+        parts = urlsplit(auth_endpoint)
+        existing = dict(parse_qsl(parts.query, keep_blank_values=True))
+        
+        # PostHog params win (so resource from PRM overrides endpoint's baked-in wrong resource)
+        merged = {**existing, **query_params}
+        return urlunsplit(
+            (parts.scheme, parts.netloc, parts.path, urlencode(merged), parts.fragment)
+        )
 
     @validated_request(
         MCPServerInstallationUpdateSerializer,
